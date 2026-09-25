@@ -1,0 +1,103 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdrolebindings.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdRoleBinding
+    listKind: NetBirdRoleBindingList
+    plural: netbirdrolebindings
+    singular: netbirdrolebinding
+    shortNames: [nbrb]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Ready
+          type: string
+          jsonPath: .status.conditions[?(@.type=="Ready")].status
+        - name: Matched
+          type: integer
+          jsonPath: .status.matchedUsers
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [groupRef, role]
+              properties:
+                groupRef:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                      minLength: 1
+                      description: Exact name of an existing NetBird group, including groups materialized by NetBirdIdentitySync.
+                role:
+                  type: string
+                  enum: [admin]
+                  description: Internal NetBird role to apply. Only admin is supported; owner is never automated.
+                revokeOnExit:
+                  type: boolean
+                  default: true
+                restoreOnDelete:
+                  type: boolean
+                  default: true
+                includeServiceUsers:
+                  type: boolean
+                  default: false
+                pollIntervalSeconds:
+                  type: integer
+                  minimum: 15
+                  maximum: 3600
+                  default: 60
+                  description: Per-object polling interval for external identity membership changes.
+            status:
+              type: object
+              properties:
+                observedGeneration: { type: integer, format: int64 }
+                synced: { type: boolean }
+                lastSyncTime: { type: string, format: date-time }
+                matchedUsers: { type: integer, minimum: 0 }
+                promotedUsers: { type: integer, minimum: 0 }
+                restoredUsers: { type: integer, minimum: 0 }
+                skippedUsers: { type: integer, minimum: 0 }
+                conflicts:
+                  type: array
+                  items: { type: string }
+                managedUsers:
+                  type: array
+                  x-kubernetes-list-type: map
+                  x-kubernetes-list-map-keys: [userId]
+                  items:
+                    type: object
+                    required: [userId, previousRole, appliedRole]
+                    properties:
+                      userId: { type: string }
+                      previousRole: { type: string }
+                      appliedRole: { type: string, enum: [admin] }
+                conditions:
+                  type: array
+                  x-kubernetes-list-type: map
+                  x-kubernetes-list-map-keys: [type]
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string, enum: ["True", "False", Unknown] }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

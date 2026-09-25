@@ -1,0 +1,24 @@
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-identity-sync
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdidentitysyncs
+  resyncPeriodSeconds: 60
+  hooks:
+    customize:
+      version: v2
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/customize/identity-sync
+        timeout: 30s
+    sync:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/sync/identity-sync
+        timeout: 30s
+    finalize:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/finalize/identity-sync
+        timeout: 30s

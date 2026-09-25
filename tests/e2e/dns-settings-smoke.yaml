@@ -1,0 +1,11 @@
+# Synthetic singleton fixture for a dedicated E2E account. The empty list
+# exercises the no-disabled-groups state without depending on real groups.
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdDNSSettings
+metadata:
+  name: default
+  namespace: netbird
+  labels:
+    test.netbird.io/owner: netbird-complementary-operator
+spec:
+  disabledManagementGroupRefs: []

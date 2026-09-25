@@ -1,0 +1,13 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoleBinding
+metadata:
+  name: example-operations-staff
+  namespace: netbird
+spec:
+  groupRef:
+    name: example-operations-staff
+  role: admin
+  revokeOnExit: true
+  restoreOnDelete: true
+  includeServiceUsers: false
+  pollIntervalSeconds: 60

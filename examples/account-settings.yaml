@@ -1,0 +1,29 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdAccountSettings
+metadata:
+  name: default
+  namespace: netbird
+spec:
+  peerLoginExpiration:
+    enabled: true
+    seconds: 86400
+  peerInactivityExpiration:
+    enabled: true
+    seconds: 600
+  regularUsersViewBlocked: true
+  groupsPropagationEnabled: true
+  jwtGroups:
+    enabled: true
+    claimName: "groups"
+    allowGroups: []
+  routingPeerDnsResolutionEnabled: true
+  dnsDomain: "netbird.selfhosted"
+  peerExpose:
+    enabled: false
+    groupRefs: []
+  extra:
+    peerApprovalEnabled: false
+    userApprovalRequired: false
+    networkTrafficLogsEnabled: false
+    networkTrafficLogsGroupRefs: []
+    networkTrafficPacketCounterEnabled: false

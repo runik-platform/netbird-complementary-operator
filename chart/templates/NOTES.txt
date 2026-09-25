@@ -1,0 +1,29 @@
+{{ include "netbird-complementary-operator.fullname" . }} {{ .Chart.AppVersion }} is installed in namespace {{ .Release.Namespace }}.
+
+Management URL : {{ .Values.netbird.managementUrl }}
+PAT Secret     : {{ .Values.netbird.apiKeySecret.name }}/{{ .Values.netbird.apiKeySecret.key }}
+PAT hot reload : {{ .Values.netbird.apiKeySecret.mountAsFile }}
+Image          : {{ include "netbird-complementary-operator.image" . }}
+
+1) Verify the webhook pod is Ready:
+
+   kubectl -n {{ .Release.Namespace }} get deploy,po -l app.kubernetes.io/instance={{ .Release.Name }}
+
+2) Check the CompositeControllers registered with Metacontroller:
+
+   kubectl get compositecontrollers.metacontroller.k8s.io -l app.kubernetes.io/instance={{ .Release.Name }}
+
+3) Apply an example CR (namespaced to {{ .Release.Namespace }}):
+
+   kubectl -n {{ .Release.Namespace }} apply -f examples/account-settings.yaml
+
+4) Watch reconciliation status:
+
+   kubectl -n {{ .Release.Namespace }} get netbirdaccountsettings,netbirddnssettings,netbirdpolicies,netbirdnetworks,netbirdnetworkresources,netbirdnetworkrouters
+
+{{- if not .Values.netbird.apiKeySecret.create }}
+
+NOTE: netbird.apiKeySecret.create is false — the secret
+      "{{ .Values.netbird.apiKeySecret.name }}" with key "{{ .Values.netbird.apiKeySecret.key }}"
+      must exist in namespace "{{ .Release.Namespace }}" before the pod can start.
+{{- end }}

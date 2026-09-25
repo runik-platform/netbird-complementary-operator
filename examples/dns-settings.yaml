@@ -1,0 +1,7 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdDNSSettings
+metadata:
+  name: default
+  namespace: netbird
+spec:
+  disabledManagementGroupRefs: []

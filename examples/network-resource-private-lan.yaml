@@ -1,0 +1,13 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetworkResource
+metadata:
+  name: example-lan
+spec:
+  networkRef:
+    name: location-example-site
+  name: example-lan
+  description: Internal subnet at example-site
+  address: 10.10.0.0/24
+  enabled: true
+  groupRefs:
+    - location-example-site-resources

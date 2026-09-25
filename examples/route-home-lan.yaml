@@ -1,0 +1,17 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoute
+metadata:
+  name: home-lan
+  namespace: netbird
+spec:
+  description: "Home LAN"
+  networkId: "home-lan"
+  enabled: true
+  peerGroupRefs:
+    - "vpn-servers"
+  network: "10.10.0.0/24"
+  metric: 100
+  masquerade: true
+  groupRefs:
+    - "vpn-users"
+  keepRoute: false

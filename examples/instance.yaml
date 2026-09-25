@@ -1,0 +1,50 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdInstance
+metadata:
+  name: default
+  namespace: netbird
+spec:
+  management:
+    mode: managed
+    image:
+      repository: ghcr.io/runik-platform/netbird-management
+      digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    publicEndpoint: https://vpn.example.com
+  dashboard:
+    mode: managed
+    image: { repository: netbirdio/dashboard, tag: v2.92.0 }
+  signals:
+    - name: primary
+      location: cluster
+      mode: managed
+      image: { repository: netbirdio/signal, tag: 0.78.2 }
+      publicEndpoint: grpc://vpn.example.com:33000
+  relays:
+    - name: primary
+      location: cluster
+      mode: managed
+      image: { repository: netbirdio/relay, tag: 0.78.2 }
+      publicEndpoint: rel://vpn.example.com:33080
+  stunTurns:
+    - name: primary
+      location: cluster
+      mode: managed
+      image: { repository: coturn/coturn, tag: 4.6.3 }
+      endpoints: [stun:vpn.example.com:3478]
+  database:
+    secretRef: { name: netbird-postgres, key: uri }
+  encryptionKeySecretRef: { name: netbird-encryption, key: key }
+  oidc:
+    issuer: https://sso.example.com/realms/netbird
+    clientID: netbird
+    redirectURLs: [https://vpn.example.com/auth/callback]
+  bootstrap:
+    accountName: example
+    ownerName: operator-owner
+    credentialSecretRef: { name: netbird-mgmt-api-key, key: NB_API_KEY }
+    # Change to rotate the sealed Owner PAT once.
+    rotationRevision: "1"
+    # Change only after restoring a matching Secret or database recovery set.
+    recoveryRevision: "1"
+  lifecycle:
+    deletionPolicy: Retain

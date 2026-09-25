@@ -1,0 +1,21 @@
+# Patterns to ignore when building packages.
+.DS_Store
+.git/
+.gitignore
+.bzr/
+.hg/
+.hgignore
+.svn/
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+# Helm artifacts
+.helmignore
+*.tgz
+# Dev files
+OWNERS
+# Editors
+.idea/
+.vscode/

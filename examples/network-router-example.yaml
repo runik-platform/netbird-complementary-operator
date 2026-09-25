@@ -1,0 +1,11 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetworkRouter
+metadata:
+  name: example-router
+spec:
+  networkRef:
+    name: location-example-site
+  peerRef: example-router-01
+  enabled: true
+  masquerade: true
+  metric: 100

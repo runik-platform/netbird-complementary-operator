@@ -1,0 +1,19 @@
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-peer-group-binding
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdpeergroupbindings
+  resyncPeriodSeconds: 60
+  hooks:
+    sync:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/sync/peer-group-binding
+        timeout: 30s
+    finalize:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/finalize/peer-group-binding
+        timeout: 30s

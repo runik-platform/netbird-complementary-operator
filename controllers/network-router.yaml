@@ -1,0 +1,19 @@
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-network-router
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdnetworkrouters
+  resyncPeriodSeconds: 300
+  hooks:
+    sync:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/sync/network-router
+        timeout: 30s
+    finalize:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/finalize/network-router
+        timeout: 30s

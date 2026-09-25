@@ -1,0 +1,155 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdpeerenrollments.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdPeerEnrollment
+    listKind: NetBirdPeerEnrollmentList
+    plural: netbirdpeerenrollments
+    singular: netbirdpeerenrollment
+    shortNames: [nbpe]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Mode
+          type: string
+          jsonPath: .spec.mode
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Peer ID
+          type: string
+          jsonPath: .status.peerId
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [mode, peerIdentity]
+              x-kubernetes-validations:
+                - rule: "self.mode == 'enroll' ? has(self.enrollment) && has(self.workloadRef) && has(self.peerIdentity.hostname) && !has(self.peerIdentity.id) : !has(self.enrollment) && !has(self.workloadRef) && has(self.peerIdentity.id)"
+                  message: enroll requires enrollment, workloadRef and hostname but forbids peerIdentity.id; adopt requires peerIdentity.id and forbids enrollment/workloadRef
+                - rule: "!(self.mode == 'adopt' && self.deletionPolicy == 'Delete') || (has(self.ownership) && self.ownership.takeOwnership)"
+                  message: deleting an adopted peer requires ownership.takeOwnership=true
+              properties:
+                mode:
+                  type: string
+                  enum: [enroll, adopt]
+                peerIdentity:
+                  type: object
+                  description: Stable identity. Adopt resolves exclusively by id; the other fields are assertions.
+                  properties:
+                    id: { type: string, minLength: 1 }
+                    hostname: { type: string, minLength: 1 }
+                    dnsLabel: { type: string, minLength: 1 }
+                    serialNumber: { type: string, minLength: 1 }
+                workloadRef:
+                  type: object
+                  required: [apiVersion, kind, name]
+                  description: Same-namespace workload that consumes the temporary Secret in enroll mode.
+                  properties:
+                    apiVersion: { type: string, enum: [apps/v1] }
+                    kind: { type: string, enum: [Deployment, StatefulSet, DaemonSet] }
+                    name: { type: string, minLength: 1 }
+                enrollment:
+                  type: object
+                  required: [secretRef]
+                  properties:
+                    secretRef:
+                      type: object
+                      required: [name]
+                      properties:
+                        name: { type: string, minLength: 1 }
+                        key: { type: string, minLength: 1, default: setupKey }
+                    expiresInSeconds:
+                      type: integer
+                      minimum: 60
+                      maximum: 3600
+                      default: 600
+                    ephemeral:
+                      type: boolean
+                      default: false
+                    replacementRevision:
+                      type: integer
+                      minimum: 0
+                      default: 0
+                      description: Explicit operator-controlled generation for a future replacement workflow.
+                settings:
+                  type: object
+                  properties:
+                    name: { type: string, minLength: 1 }
+                    sshEnabled: { type: boolean }
+                    loginExpirationEnabled: { type: boolean }
+                    inactivityExpirationEnabled: { type: boolean }
+                    approvalRequired: { type: boolean }
+                groupRefs:
+                  type: array
+                  items: { type: string, minLength: 1 }
+                ownership:
+                  type: object
+                  properties:
+                    takeOwnership: { type: boolean, default: false }
+                deletionPolicy:
+                  type: string
+                  enum: [Retain, Delete]
+                  default: Retain
+                restoreSettingsOnDelete:
+                  type: boolean
+                  default: true
+            status:
+              type: object
+              properties:
+                phase: { type: string }
+                peerId: { type: string }
+                peerOwned: { type: boolean }
+                setupKeyId: { type: string }
+                setupKeyName: { type: string }
+                setupKeyRevoked: { type: boolean }
+                setupKeyGroupIds:
+                  type: array
+                  items: { type: string }
+                observedReplacementRevision: { type: integer }
+                baselinePeerIds:
+                  type: array
+                  items: { type: string }
+                managedGroupIds:
+                  type: array
+                  items: { type: string }
+                originalSettings:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                wireGuardProfile:
+                  type: object
+                  properties:
+                    ip: { type: string }
+                    ipv6: { type: string }
+                    dnsLabel: { type: string }
+                    version: { type: string }
+                    connected: { type: boolean }
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

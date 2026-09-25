@@ -1,0 +1,116 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdroutes.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdRoute
+    listKind: NetBirdRouteList
+    plural: netbirdroutes
+    singular: netbirdroute
+    shortNames: [nbrt]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Synced
+          type: boolean
+          jsonPath: .status.synced
+        - name: NBID
+          type: string
+          jsonPath: .status.id
+        - name: NetworkID
+          type: string
+          jsonPath: .spec.networkId
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [networkId, description]
+              description: |
+                NetBird RouteRequest (v0.68). Note: upstream has no "name" field;
+                "description" + "networkId" identify the route. Use either
+                "network" (CIDR) OR "domains", and "peerRef" OR "peerGroupRefs".
+              x-kubernetes-validations:
+                - rule: "!(has(self.peerRef) && size(self.peerRef) > 0 && has(self.peerGroupRefs) && size(self.peerGroupRefs) > 0)"
+                  message: "peerRef and peerGroupRefs are mutually exclusive"
+                - rule: "!(has(self.network) && size(self.network) > 0 && has(self.domains) && size(self.domains) > 0)"
+                  message: "network and domains are mutually exclusive"
+              properties:
+                description:
+                  type: string
+                  minLength: 1
+                networkId:
+                  type: string
+                  minLength: 1
+                  maxLength: 40
+                enabled:
+                  type: boolean
+                  default: true
+                peerRef:
+                  type: string
+                  description: Peer name; resolved to peer ID at sync time. Mutually exclusive with peerGroupRefs.
+                peerGroupRefs:
+                  type: array
+                  items: { type: string }
+                  description: Group names; resolved to IDs. Mutually exclusive with peerRef.
+                network:
+                  type: string
+                  description: CIDR. Mutually exclusive with domains.
+                domains:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                  maxItems: 32
+                metric:
+                  type: integer
+                  minimum: 1
+                  maximum: 9999
+                  default: 9999
+                masquerade:
+                  type: boolean
+                  default: true
+                groupRefs:
+                  type: array
+                  items: { type: string }
+                  description: Distribution group names (resolved to IDs).
+                keepRoute:
+                  type: boolean
+                  default: false
+                accessControlGroupRefs:
+                  type: array
+                  items: { type: string }
+                skipAutoApply:
+                  type: boolean
+            status:
+              type: object
+              properties:
+                id: { type: string }
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

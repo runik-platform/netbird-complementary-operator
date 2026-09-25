@@ -1,0 +1,141 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdpolicies.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdPolicy
+    listKind: NetBirdPolicyList
+    plural: netbirdpolicies
+    singular: netbirdpolicy
+    shortNames: [nbpol]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Synced
+          type: boolean
+          jsonPath: .status.synced
+        - name: NBID
+          type: string
+          jsonPath: .status.id
+        - name: State
+          type: string
+          jsonPath: .spec.state
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [name]
+              x-kubernetes-validations:
+                - rule: "self.state == 'absent' || (has(self.sourceGroupRefs) && size(self.sourceGroupRefs) > 0 && has(self.destinationGroupRefs) && size(self.destinationGroupRefs) > 0 && has(self.rules) && size(self.rules) > 0)"
+                  message: "present policies require sourceGroupRefs, destinationGroupRefs and rules"
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                description:
+                  type: string
+                  default: ""
+                state:
+                  type: string
+                  enum: [present, absent]
+                  default: present
+                enabled:
+                  type: boolean
+                  default: true
+                sourceGroupRefs:
+                  type: array
+                  minItems: 1
+                  items: { type: string, minLength: 1 }
+                  description: Exact NetBird group names, including JWT-issued groups.
+                destinationGroupRefs:
+                  type: array
+                  minItems: 1
+                  items: { type: string, minLength: 1 }
+                  description: Exact group names; groups may contain peers or Network Resources.
+                sourcePostureCheckRefs:
+                  type: array
+                  items: { type: string, minLength: 1 }
+                  description: Exact posture-check names.
+                rules:
+                  type: array
+                  minItems: 1
+                  x-kubernetes-list-type: map
+                  x-kubernetes-list-map-keys: [name]
+                  items:
+                    type: object
+                    required: [name]
+                    x-kubernetes-validations:
+                      - rule: "!(has(self.ports) && size(self.ports) > 0 && has(self.portRanges) && size(self.portRanges) > 0)"
+                        message: "ports and portRanges are mutually exclusive"
+                      - rule: "self.protocol in ['tcp', 'udp'] || ((!has(self.ports) || size(self.ports) == 0) && (!has(self.portRanges) || size(self.portRanges) == 0))"
+                        message: "all and icmp rules cannot declare ports or portRanges"
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                      enabled:
+                        type: boolean
+                        default: true
+                      action:
+                        type: string
+                        enum: [accept]
+                        default: accept
+                      bidirectional:
+                        type: boolean
+                        default: true
+                      protocol:
+                        type: string
+                        enum: [all, tcp, udp, icmp]
+                        default: all
+                      ports:
+                        type: array
+                        items:
+                          type: integer
+                          minimum: 1
+                          maximum: 65535
+                      portRanges:
+                        type: array
+                        items:
+                          type: object
+                          required: [start, end]
+                          x-kubernetes-validations:
+                            - rule: "self.start <= self.end"
+                              message: "port range start must be less than or equal to end"
+                          properties:
+                            start: { type: integer, minimum: 1, maximum: 65535 }
+                            end: { type: integer, minimum: 1, maximum: 65535 }
+            status:
+              type: object
+              properties:
+                id: { type: string }
+                state: { type: string }
+                pendingDeletion: { type: boolean }
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

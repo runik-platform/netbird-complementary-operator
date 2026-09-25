@@ -1,0 +1,22 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdIdentitySync
+metadata:
+  name: keycloak-example
+  namespace: netbird
+spec:
+  source: keycloak-example
+  instanceId: default
+  provider:
+    baseUrl: https://sso.example.invalid
+    realm: example
+    clientId: netbird-identity-sync
+    credentialsSecretRef:
+      name: netbird-keycloak-client
+      key: client-secret
+  realmRoles:
+    - example-operations-staff
+    - example-users
+  adoptExistingUsers: false
+  adoptExistingJWTGroups: false
+  pollIntervalSeconds: 60
+  deletionPolicy: Retain

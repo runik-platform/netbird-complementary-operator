@@ -1,0 +1,324 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdinstances.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdInstance
+    listKind: NetBirdInstanceList
+    plural: netbirdinstances
+    singular: netbirdinstance
+    shortNames: [nbi]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Bootstrap
+          type: string
+          jsonPath: .status.bootstrap.phase
+        - name: Ready
+          type: string
+          jsonPath: .status.conditions[?(@.type=="Ready")].status
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          x-kubernetes-validations:
+            - rule: "self.metadata.name == 'default'"
+              message: NetBirdInstance is a singleton and metadata.name must be default
+          properties:
+            spec:
+              type: object
+              required: [management, database, encryptionKeySecretRef, oidc, bootstrap]
+              x-kubernetes-validations:
+                - rule: "self.bootstrap.accountName == oldSelf.bootstrap.accountName"
+                  message: bootstrap.accountName is immutable
+                - rule: "self.bootstrap.credentialSecretRef.name == oldSelf.bootstrap.credentialSecretRef.name && self.bootstrap.credentialSecretRef.key == oldSelf.bootstrap.credentialSecretRef.key"
+                  message: bootstrap.credentialSecretRef is immutable
+              properties:
+                management:
+                  type: object
+                  required: [mode]
+                  x-kubernetes-validations:
+                    - rule: "self.mode == 'managed' ? has(self.image) && !has(self.endpoint) : has(self.endpoint) && !has(self.image)"
+                      message: managed Management requires image; external Management requires endpoint
+                    - rule: "self.mode != 'external' || has(self.bootstrapSecretRef)"
+                      message: external Management requires bootstrapSecretRef
+                  properties:
+                    mode: { type: string, enum: [managed, external] }
+                    image:
+                      type: object
+                      required: [repository, digest]
+                      properties:
+                        repository: { type: string, minLength: 1 }
+                        digest:
+                          type: string
+                          pattern: "^sha256:[a-f0-9]{64}$"
+                    endpoint:
+                      type: string
+                      pattern: "^https?://"
+                    publicEndpoint:
+                      type: string
+                      pattern: "^https?://"
+                    bootstrapSecretRef:
+                      type: object
+                      required: [name, key]
+                      properties:
+                        name:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                        key: { type: string, minLength: 1 }
+                    service:
+                      type: object
+                      properties:
+                        type: { type: string, enum: [ClusterIP, LoadBalancer, NodePort] }
+                        annotations:
+                          type: object
+                          additionalProperties: { type: string }
+                dashboard:
+                  type: object
+                  required: [mode]
+                  x-kubernetes-validations:
+                    - rule: "self.mode == 'managed' ? has(self.image) : !has(self.image)"
+                      message: managed Dashboard requires image
+                  properties:
+                    mode: { type: string, enum: [managed, external] }
+                    endpoint: { type: string }
+                    image:
+                      &componentImage
+                      type: object
+                      required: [repository]
+                      x-kubernetes-validations:
+                        - rule: "has(self.digest) != has(self.tag)"
+                          message: exactly one of digest or tag is required
+                      properties:
+                        repository: { type: string, minLength: 1 }
+                        digest:
+                          type: string
+                          pattern: "^sha256:[a-f0-9]{64}$"
+                        tag: { type: string, minLength: 1 }
+                    service: &componentService
+                      type: object
+                      properties:
+                        type: { type: string, enum: [ClusterIP, LoadBalancer, NodePort] }
+                        annotations:
+                          type: object
+                          additionalProperties: { type: string }
+                signals:
+                  type: array
+                  maxItems: 1
+                  items:
+                    type: object
+                    required: [name, location, mode]
+                    x-kubernetes-validations:
+                      - rule: "self.mode == 'managed' ? has(self.image) && !has(self.endpoint) : has(self.endpoint) && !has(self.image) && !has(self.publicEndpoint)"
+                        message: managed components require image; external components require endpoint
+                    properties:
+                      name:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                        maxLength: 40
+                      location:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                      mode: { type: string, enum: [managed, external] }
+                      endpoint: { type: string, minLength: 1 }
+                      publicEndpoint:
+                        type: string
+                        pattern: "^grpcs?://"
+                      image:
+                        type: object
+                        required: [repository]
+                        x-kubernetes-validations:
+                          - rule: "has(self.digest) != has(self.tag)"
+                            message: exactly one of digest or tag is required
+                        properties:
+                          repository: { type: string, minLength: 1 }
+                          digest:
+                            type: string
+                            pattern: "^sha256:[a-f0-9]{64}$"
+                          tag: { type: string, minLength: 1 }
+                      service:
+                        type: object
+                        properties:
+                          type: { type: string, enum: [ClusterIP, LoadBalancer, NodePort] }
+                          annotations:
+                            type: object
+                            additionalProperties: { type: string }
+                relays:
+                  type: array
+                  items:
+                    &networkComponent
+                    type: object
+                    required: [name, location, mode]
+                    x-kubernetes-validations:
+                      - rule: "self.mode == 'managed' ? has(self.image) && !has(self.endpoint) : has(self.endpoint) && !has(self.image) && !has(self.publicEndpoint)"
+                        message: managed components require image; external components require endpoint
+                    properties:
+                      name:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                        maxLength: 40
+                      location:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                      mode: { type: string, enum: [managed, external] }
+                      endpoint: { type: string, minLength: 1 }
+                      publicEndpoint:
+                        type: string
+                        pattern: "^rels?://"
+                      image:
+                        <<: *componentImage
+                      service:
+                        <<: *componentService
+                stunTurns:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, location, mode]
+                    x-kubernetes-validations:
+                      - rule: "self.mode == 'managed' ? has(self.image) : size(self.endpoints) > 0"
+                        message: managed STUN/TURN requires image; external requires endpoints
+                    properties:
+                      name:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                      location:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                      mode: { type: string, enum: [managed, external] }
+                      endpoints:
+                        type: array
+                        items: { type: string, minLength: 1 }
+                      image:
+                        <<: *componentImage
+                      service:
+                        <<: *componentService
+                      credentialSecretRef:
+                        type: object
+                        required: [name, key]
+                        properties:
+                          name:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          key: { type: string, minLength: 1 }
+                database:
+                  type: object
+                  required: [secretRef]
+                  properties:
+                    secretRef: &secretRef
+                      type: object
+                      required: [name, key]
+                      properties:
+                        name:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                        key: { type: string, minLength: 1 }
+                encryptionKeySecretRef:
+                  <<: *secretRef
+                oidc:
+                  type: object
+                  required: [issuer, clientID]
+                  properties:
+                    issuer:
+                      type: string
+                      pattern: "^https://"
+                    clientID: { type: string, minLength: 1 }
+                    clientSecretRef:
+                      <<: *secretRef
+                    redirectURLs:
+                      type: array
+                      items:
+                        type: string
+                        pattern: "^https://"
+                bootstrap:
+                  type: object
+                  required: [accountName, credentialSecretRef]
+                  x-kubernetes-validations:
+                    - rule: "!has(self.adoptionCredentialSecretRef) || self.adoptionCredentialSecretRef.name != self.credentialSecretRef.name"
+                      message: adoption and output credential Secrets must be different
+                  properties:
+                    accountName: { type: string, minLength: 1, maxLength: 255 }
+                    ownerName:
+                      type: string
+                      enum: [operator-owner]
+                      default: operator-owner
+                    credentialSecretRef:
+                      <<: *secretRef
+                    adoptionCredentialSecretRef:
+                      <<: *secretRef
+                    rotationRevision:
+                      type: string
+                      maxLength: 255
+                    recoveryRevision:
+                      type: string
+                      maxLength: 255
+                lifecycle:
+                  type: object
+                  properties:
+                    deletionPolicy:
+                      type: string
+                      enum: [Retain, DeleteRuntime]
+                      default: Retain
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: [Pending, Progressing, Ready, Degraded, Deleting]
+                accountID: { type: string }
+                ownerUserID: { type: string }
+                credentialSecretRef:
+                  <<: *secretRef
+                bootstrap:
+                  type: object
+                  properties:
+                    phase:
+                      type: string
+                      enum: [BootstrapPending, Bootstrapping, BootstrapSealed, RecoveryRequired]
+                    sealedAt: { type: string, format: date-time }
+                credentialRotation:
+                  type: object
+                  properties:
+                    observedRevision: { type: string }
+                    rotatedAt: { type: string, format: date-time }
+                credentialRecovery:
+                  type: object
+                  properties:
+                    observedRevision: { type: string }
+                    recoveredAt: { type: string, format: date-time }
+                migrations:
+                  type: object
+                  properties:
+                    phase:
+                      type: string
+                      enum: [Pending, Succeeded, Failed]
+                    observedVersion: { type: string }
+                synced: { type: boolean }
+                observedGeneration: { type: integer, format: int64 }
+                lastSyncTime: { type: string, format: date-time }
+                retainedRuntime: { type: boolean }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string, enum: ["True", "False", Unknown] }
+                      reason: { type: string }
+                      message: { type: string }
+                      observedGeneration: { type: integer, format: int64 }
+                      lastTransitionTime: { type: string, format: date-time }

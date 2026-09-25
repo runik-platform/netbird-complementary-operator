@@ -1,0 +1,26 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetwork
+metadata:
+  name: location-example-site
+spec:
+  name: location-example-site
+  description: External resources reachable through the example-site location
+  enabled: true
+---
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetwork
+metadata:
+  name: location-secondary-site
+spec:
+  name: location-secondary-site
+  description: External resources reachable through the secondary-site location
+  enabled: true
+---
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNetwork
+metadata:
+  name: location-remote-site
+spec:
+  name: location-remote-site
+  description: External resources reachable through the remote-site location
+  enabled: true

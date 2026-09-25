@@ -1,0 +1,11 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdDNSRecord
+metadata:
+  name: web-internal
+  namespace: netbird
+spec:
+  zoneRef: "internal"
+  name: "web.internal.example.com"
+  type: A
+  content: "10.0.0.5"
+  ttl: 300

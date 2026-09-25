@@ -1,0 +1,19 @@
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-dns-settings
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirddnssettings
+  resyncPeriodSeconds: 300
+  hooks:
+    sync:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/sync/dns-settings
+        timeout: 30s
+    finalize:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/finalize/dns-settings
+        timeout: 30s

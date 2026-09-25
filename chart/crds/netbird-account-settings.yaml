@@ -1,0 +1,110 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdaccountsettings.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdAccountSettings
+    listKind: NetBirdAccountSettingsList
+    plural: netbirdaccountsettings
+    singular: netbirdaccountsettings
+    shortNames: [nbas]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Synced
+          type: boolean
+          jsonPath: .status.synced
+        - name: AccountID
+          type: string
+          jsonPath: .status.id
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              description: |
+                Account-level settings. Matches AccountSettings in NetBird v0.68.x
+                OpenAPI. Singleton: only one instance per cluster is reconciled.
+              properties:
+                peerLoginExpiration:
+                  type: object
+                  properties:
+                    enabled: { type: boolean }
+                    seconds: { type: integer, minimum: 0 }
+                peerInactivityExpiration:
+                  type: object
+                  properties:
+                    enabled: { type: boolean }
+                    seconds: { type: integer, minimum: 0 }
+                regularUsersViewBlocked: { type: boolean }
+                groupsPropagationEnabled: { type: boolean }
+                jwtGroups:
+                  type: object
+                  properties:
+                    enabled: { type: boolean }
+                    claimName: { type: string }
+                    allowGroups:
+                      type: array
+                      items: { type: string }
+                routingPeerDnsResolutionEnabled: { type: boolean }
+                dnsDomain: { type: string }
+                networkRange:
+                  type: string
+                  description: CIDR (e.g. 100.64.0.0/16)
+                peerExpose:
+                  type: object
+                  properties:
+                    enabled: { type: boolean }
+                    groupRefs:
+                      type: array
+                      items: { type: string }
+                lazyConnectionEnabled: { type: boolean }
+                autoUpdate:
+                  type: object
+                  properties:
+                    version: { type: string }
+                    always: { type: boolean }
+                extra:
+                  type: object
+                  description: |
+                    AccountExtraSettings. All fields are required by the API,
+                    so the operator sends defaults (false / []) for any omitted field.
+                  properties:
+                    peerApprovalEnabled: { type: boolean }
+                    userApprovalRequired: { type: boolean }
+                    networkTrafficLogsEnabled: { type: boolean }
+                    networkTrafficLogsGroupRefs:
+                      type: array
+                      items: { type: string }
+                    networkTrafficPacketCounterEnabled: { type: boolean }
+            status:
+              type: object
+              properties:
+                id: { type: string }
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

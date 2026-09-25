@@ -1,0 +1,67 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdnetworks.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdNetwork
+    listKind: NetBirdNetworkList
+    plural: netbirdnetworks
+    singular: netbirdnetwork
+    shortNames: [nbnet]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Synced
+          type: boolean
+          jsonPath: .status.synced
+        - name: NBID
+          type: string
+          jsonPath: .status.id
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                description:
+                  type: string
+                  default: ""
+                enabled:
+                  type: boolean
+                  default: true
+                  description: Must be true; the upstream Networks API has no disabled state.
+            status:
+              type: object
+              properties:
+                id: { type: string }
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

@@ -1,0 +1,204 @@
+{{- if .Values.compositeControllers.enabled -}}
+{{- $fqdn := include "netbird-complementary-operator.serviceFQDN" . -}}
+{{- $port := .Values.service.port | int -}}
+{{- $timeout := .Values.compositeControllers.timeout -}}
+{{- $resync := .Values.compositeControllers.resyncPeriodSeconds | int -}}
+{{- $labels := include "netbird-complementary-operator.labels" . -}}
+{{- range $k, $v := dict
+  "account-settings"  "netbirdaccountsettings"
+  "dns-settings"      "netbirddnssettings"
+  "nameserver-group"  "netbirdnameservergroups"
+  "policy"            "netbirdpolicies"
+  "network"           "netbirdnetworks"
+  "network-resource"  "netbirdnetworkresources"
+  "network-router"    "netbirdnetworkrouters"
+  "peer-group-binding" "netbirdpeergroupbindings"
+  "route"             "netbirdroutes"
+  "posture-check"     "netbirdposturechecks"
+  "peer"              "netbirdpeers"
+  "dns-zone"          "netbirddnszones"
+  "dns-record"        "netbirddnsrecords"
+}}
+---
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-{{ $k }}
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: {{ $v }}
+  resyncPeriodSeconds: {{ $resync }}
+  hooks:
+    sync:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/sync/{{ $k }}
+        timeout: {{ $timeout }}
+    finalize:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/finalize/{{ $k }}
+        timeout: {{ $timeout }}
+{{- end }}
+---
+# NetBirdInstance owns the generated runtime children. The Owner PAT Secret is
+# deliberately written outside this child set so Retain deletion cannot garbage
+# collect the operational credential.
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-instance
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdinstances
+  childResources:
+    - apiVersion: apps/v1
+      resource: deployments
+      updateStrategy: { method: InPlace }
+    - apiVersion: v1
+      resource: services
+      updateStrategy: { method: InPlace }
+    - apiVersion: v1
+      resource: configmaps
+      updateStrategy: { method: InPlace }
+    - apiVersion: v1
+      resource: secrets
+      updateStrategy: { method: InPlace }
+  resyncPeriodSeconds: {{ $resync }}
+  hooks:
+    sync:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/sync/instance
+        timeout: {{ $timeout }}
+    finalize:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/finalize/instance
+        timeout: {{ $timeout }}
+---
+# Identity sync observes exactly one same-namespace Keycloak credential Secret.
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-identity-sync
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdidentitysyncs
+  resyncPeriodSeconds: {{ .Values.identitySync.resyncPeriodSeconds }}
+  hooks:
+    customize:
+      version: v2
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/customize/identity-sync
+        timeout: {{ $timeout }}
+    sync:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/sync/identity-sync
+        timeout: {{ $timeout }}
+    finalize:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/finalize/identity-sync
+        timeout: {{ $timeout }}
+---
+# Role bindings use a customize hook to observe peer bindings in the same
+# namespace and resolve overlapping ownership deterministically.
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-role-binding
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdrolebindings
+  resyncPeriodSeconds: {{ .Values.roleBinding.resyncPeriodSeconds }}
+  hooks:
+    customize:
+      version: v2
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/customize/role-binding
+        timeout: {{ $timeout }}
+    sync:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/sync/role-binding
+        timeout: {{ $timeout }}
+    finalize:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/finalize/role-binding
+        timeout: {{ $timeout }}
+---
+# NetBirdToken emits a Secret holding the plaintext PAT. It is declared
+# separately so Metacontroller knows to reconcile that child alongside the
+# parent.
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-token
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdtokens
+  childResources:
+    - apiVersion: v1
+      resource: secrets
+      updateStrategy:
+        method: InPlace
+  resyncPeriodSeconds: {{ $resync }}
+  hooks:
+    sync:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/sync/token
+        timeout: {{ $timeout }}
+    finalize:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/finalize/token
+        timeout: {{ $timeout }}
+---
+# Peer enrollment owns only a temporary same-namespace Secret. Workloads are
+# observed through the customize hook and are never patched or adopted.
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-peer-enrollment
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdpeerenrollments
+  childResources:
+    - apiVersion: v1
+      resource: secrets
+      updateStrategy:
+        method: InPlace
+  resyncPeriodSeconds: 10
+  hooks:
+    customize:
+      version: v2
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/customize/peer-enrollment
+        timeout: {{ $timeout }}
+    sync:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/sync/peer-enrollment
+        timeout: {{ $timeout }}
+    finalize:
+      webhook:
+        url: http://{{ $fqdn }}:{{ $port }}/finalize/peer-enrollment
+        timeout: {{ $timeout }}
+{{- end }}

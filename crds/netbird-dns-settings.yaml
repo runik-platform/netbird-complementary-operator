@@ -1,0 +1,59 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirddnssettings.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdDNSSettings
+    listKind: NetBirdDNSSettingsList
+    plural: netbirddnssettings
+    singular: netbirddnssettings
+    shortNames: [nbdns]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Synced
+          type: boolean
+          jsonPath: .status.synced
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              description: |
+                Global DNS settings. Singleton: only one instance per cluster is
+                reconciled. Groups are referenced by name; the operator resolves them to IDs.
+              properties:
+                disabledManagementGroupRefs:
+                  type: array
+                  items: { type: string }
+                  description: Group names whose DNS management is disabled.
+            status:
+              type: object
+              properties:
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

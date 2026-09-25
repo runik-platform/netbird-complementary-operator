@@ -1,0 +1,99 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdtokens.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdToken
+    listKind: NetBirdTokenList
+    plural: netbirdtokens
+    singular: netbirdtoken
+    shortNames: [nbt]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Synced
+          type: boolean
+          jsonPath: .status.synced
+        - name: Secret
+          type: string
+          jsonPath: .spec.secretRef.name
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [userRef, name, secretRef]
+              x-kubernetes-validations:
+                - rule: "!has(self.renewBeforeDays) || !has(self.expiresInDays) || self.renewBeforeDays < self.expiresInDays"
+                  message: renewBeforeDays must be less than expiresInDays
+              description: |
+                Creates and renews a NetBird Personal Access Token for a user.
+                The plaintext is returned once, published to secretRef, and
+                never stored in status. The prior PAT expires naturally after
+                the new Secret value is observed.
+              properties:
+                userRef:
+                  type: string
+                  minLength: 1
+                  description: Target user's name or email (resolved to ID).
+                name:
+                  type: string
+                  minLength: 1
+                expiresInDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 365
+                  default: 90
+                renewBeforeDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 364
+                  description: Defaults in the controller to min(7, expiresInDays - 1) for compatibility with legacy short-lived tokens.
+                secretRef:
+                  type: object
+                  required: [name, key]
+                  properties:
+                    name:
+                      type: string
+                      minLength: 1
+                    key:
+                      type: string
+                      minLength: 1
+                      default: token
+            status:
+              type: object
+              properties:
+                id: { type: string }
+                activeTokenId: { type: string }
+                previousTokenId: { type: string }
+                pendingSecretHash: { type: string }
+                userId: { type: string }
+                expiresAt: { type: string, format: date-time }
+                lastRotationTime: { type: string, format: date-time }
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

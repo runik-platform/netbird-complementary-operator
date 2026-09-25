@@ -1,0 +1,95 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdnameservergroups.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdNameserverGroup
+    listKind: NetBirdNameserverGroupList
+    plural: netbirdnameservergroups
+    singular: netbirdnameservergroup
+    shortNames: [nbnsg]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Synced
+          type: boolean
+          jsonPath: .status.synced
+        - name: NBID
+          type: string
+          jsonPath: .status.id
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [name, nameservers]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 40
+                description:
+                  type: string
+                nameservers:
+                  type: array
+                  minItems: 1
+                  maxItems: 3
+                  items:
+                    type: object
+                    required: [ip, nsType, port]
+                    properties:
+                      ip: { type: string }
+                      nsType:
+                        type: string
+                        enum: [udp]
+                      port:
+                        type: integer
+                        minimum: 1
+                        maximum: 65535
+                groupRefs:
+                  type: array
+                  items: { type: string }
+                  description: Distribution group names (resolved to IDs at sync time).
+                primary:
+                  type: boolean
+                  default: true
+                domains:
+                  type: array
+                  items: { type: string }
+                enabled:
+                  type: boolean
+                  default: true
+                searchDomainsEnabled:
+                  type: boolean
+                  default: false
+            status:
+              type: object
+              properties:
+                id: { type: string }
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

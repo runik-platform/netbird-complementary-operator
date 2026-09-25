@@ -1,0 +1,38 @@
+# Synthetic singleton fixture for a dedicated E2E account. Never apply this
+# manifest to a shared or production NetBird account: it intentionally mutates
+# account-wide settings to exercise reconciliation.
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdAccountSettings
+metadata:
+  name: default
+  namespace: netbird
+  labels:
+    test.netbird.io/owner: netbird-complementary-operator
+spec:
+  peerLoginExpiration:
+    enabled: true
+    seconds: 86400
+  peerInactivityExpiration:
+    enabled: false
+    seconds: 600
+  regularUsersViewBlocked: true
+  groupsPropagationEnabled: true
+  jwtGroups:
+    enabled: false
+    claimName: test-groups
+    allowGroups: []
+  routingPeerDnsResolutionEnabled: true
+  dnsDomain: peers.example.test
+  peerExpose:
+    enabled: false
+    groupRefs: []
+  lazyConnectionEnabled: false
+  autoUpdate:
+    version: "disabled"
+    always: false
+  extra:
+    peerApprovalEnabled: false
+    userApprovalRequired: false
+    networkTrafficLogsEnabled: false
+    networkTrafficLogsGroupRefs: []
+    networkTrafficPacketCounterEnabled: false

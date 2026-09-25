@@ -1,0 +1,34 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPolicy
+metadata:
+  name: location-example-site-access
+spec:
+  name: location-example-site-access
+  description: Allow VPN users to reach selected resources at example-site
+  enabled: true
+  sourceGroupRefs:
+    - vpn-users
+  destinationGroupRefs:
+    - location-example-site-resources
+  sourcePostureCheckRefs:
+    - minimum-version
+  rules:
+    - name: web
+      enabled: true
+      action: accept
+      bidirectional: false
+      protocol: tcp
+      ports: [80, 443]
+    - name: monitoring-ranges
+      enabled: true
+      action: accept
+      bidirectional: false
+      protocol: udp
+      portRanges:
+        - start: 9100
+          end: 9200
+    - name: diagnostics
+      enabled: true
+      action: accept
+      bidirectional: false
+      protocol: icmp

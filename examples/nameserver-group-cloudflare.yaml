@@ -1,0 +1,21 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNameserverGroup
+metadata:
+  name: cloudflare
+  namespace: netbird
+spec:
+  name: "Cloudflare DNS"
+  description: "Cloudflare public resolvers"
+  nameservers:
+    - ip: "1.1.1.1"
+      nsType: "udp"
+      port: 53
+    - ip: "1.0.0.1"
+      nsType: "udp"
+      port: 53
+  groupRefs:
+    - "All"
+  primary: true
+  domains: []
+  enabled: true
+  searchDomainsEnabled: false

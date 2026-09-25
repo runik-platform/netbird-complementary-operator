@@ -1,0 +1,26 @@
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-token
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdtokens
+  # Secret is the only child this operator emits — declare it so Metacontroller
+  # reconciles it alongside the parent (apply updates, GC on delete).
+  childResources:
+    - apiVersion: v1
+      resource: secrets
+      updateStrategy:
+        method: InPlace
+  resyncPeriodSeconds: 300
+  hooks:
+    sync:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/sync/token
+        timeout: 30s
+    finalize:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/finalize/token
+        timeout: 30s

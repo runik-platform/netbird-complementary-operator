@@ -1,0 +1,18 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPeerEnrollment
+metadata:
+  name: example-router
+  namespace: netbird
+spec:
+  mode: adopt
+  peerIdentity:
+    id: replace-with-stable-netbird-peer-id
+    hostname: example-router
+  settings:
+    name: example-router
+    loginExpirationEnabled: false
+    inactivityExpirationEnabled: false
+  groupRefs:
+    - routing-peers
+  deletionPolicy: Retain
+  restoreSettingsOnDelete: true

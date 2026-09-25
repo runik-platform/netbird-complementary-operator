@@ -1,0 +1,10 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPeer
+metadata:
+  name: server-01
+  namespace: netbird
+spec:
+  peerRef: "server-01"
+  sshEnabled: false
+  loginExpirationEnabled: false
+  inactivityExpirationEnabled: false

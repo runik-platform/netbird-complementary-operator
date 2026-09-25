@@ -1,0 +1,17 @@
+# Synthetic integration fixture. The dedicated E2E account must provide the
+# referenced group; never resolve this against a shared or production group.
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoleBinding
+metadata:
+  name: cop-smoke-role-binding
+  namespace: netbird
+  labels:
+    test.netbird.io/owner: netbird-complementary-operator
+spec:
+  groupRef:
+    name: cop-smoke-operations-staff
+  role: admin
+  revokeOnExit: true
+  restoreOnDelete: true
+  includeServiceUsers: false
+  pollIntervalSeconds: 60

@@ -1,0 +1,22 @@
+# Smoke test for NetBirdRoute.
+# Disabled + bogus CIDR (documentation range 192.0.2.0/24, RFC 5737) so no
+# real peer traffic is affected.
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdRoute
+metadata:
+  name: cop-smoke-route
+  namespace: netbird
+  labels:
+    test.netbird.io/owner: netbird-complementary-operator
+spec:
+  description: "cop-smoke-route"
+  networkId: "cop-smoke"
+  enabled: false
+  peerGroupRefs:
+    - "All"
+  network: "192.0.2.0/24"
+  metric: 9999
+  masquerade: false
+  groupRefs:
+    - "All"
+  keepRoute: false

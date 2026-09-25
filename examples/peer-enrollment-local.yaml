@@ -1,0 +1,59 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPeerEnrollment
+metadata:
+  name: cluster-router
+  namespace: netbird
+spec:
+  mode: enroll
+  peerIdentity:
+    hostname: cluster-router
+  workloadRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: cluster-router
+  enrollment:
+    secretRef:
+      name: cluster-router-enrollment
+      key: setupKey
+    expiresInSeconds: 600
+  groupRefs:
+    - routing-peers
+  deletionPolicy: Retain
+---
+# The workload must persist the NetBird profile. Its reference to the temporary
+# Secret must be optional so it can restart after enrollment removes the Secret.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cluster-router
+  namespace: netbird
+spec:
+  serviceName: cluster-router
+  replicas: 1
+  selector:
+    matchLabels: { app: cluster-router }
+  template:
+    metadata:
+      labels: { app: cluster-router }
+    spec:
+      containers:
+        - name: netbird
+          image: netbirdio/netbird:0.78.2
+          env:
+            - name: NB_SETUP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cluster-router-enrollment
+                  key: setupKey
+                  optional: true
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/netbird
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi

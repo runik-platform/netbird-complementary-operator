@@ -1,0 +1,82 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirddnszones.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdDNSZone
+    listKind: NetBirdDNSZoneList
+    plural: netbirddnszones
+    singular: netbirddnszone
+    shortNames: [nbdz]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Synced
+          type: boolean
+          jsonPath: .status.synced
+        - name: NBID
+          type: string
+          jsonPath: .status.id
+        - name: Domain
+          type: string
+          jsonPath: .spec.domain
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [name, domain]
+              description: |
+                A NetBird authoritative DNS zone (distinct from NetBirdNameserverGroup
+                which is a DNS forwarder config). Records are managed separately via
+                NetBirdDNSRecord resources that reference this zone by name.
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                domain:
+                  type: string
+                  minLength: 1
+                  description: FQDN of the zone (e.g. internal.example.com).
+                enabled:
+                  type: boolean
+                  default: true
+                enableSearchDomain:
+                  type: boolean
+                  default: false
+                distributionGroupRefs:
+                  type: array
+                  items: { type: string }
+                  description: Group names whose peers will resolve this zone.
+            status:
+              type: object
+              properties:
+                id: { type: string }
+                synced: { type: boolean }
+                observedGeneration: { type: integer }
+                lastSyncTime: { type: string, format: date-time }
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

@@ -1,0 +1,14 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdToken
+metadata:
+  name: cop-smoke-token
+  namespace: netbird
+  labels:
+    test.netbird.io/owner: netbird-complementary-operator
+spec:
+  userRef: "cop-smoke-user"
+  name: "cop-smoke-token"
+  expiresInDays: 1
+  secretRef:
+    name: cop-smoke-token-secret
+    key: token

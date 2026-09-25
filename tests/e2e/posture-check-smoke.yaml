@@ -1,0 +1,13 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPostureCheck
+metadata:
+  name: cop-smoke-pc
+  namespace: netbird
+  labels:
+    test.netbird.io/owner: netbird-complementary-operator
+spec:
+  name: "cop-smoke-pc"
+  description: "e2e test posture check (safe to delete)"
+  checks:
+    nbVersionCheck:
+      minVersion: "0.68.0"

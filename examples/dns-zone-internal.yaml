@@ -1,0 +1,12 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdDNSZone
+metadata:
+  name: internal
+  namespace: netbird
+spec:
+  name: "internal"
+  domain: "internal.example.com"
+  enabled: true
+  enableSearchDomain: false
+  distributionGroupRefs:
+    - "All"

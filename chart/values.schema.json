@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["image", "netbird"],
+  "properties": {
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "image": {
+      "type": "object",
+      "required": ["repository"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "imagePullSecrets": { "type": "array", "items": { "type": "object" } },
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": { "type": "boolean" },
+        "automount": { "type": "boolean" },
+        "annotations": { "type": "object" },
+        "name": { "type": "string" }
+      }
+    },
+    "podAnnotations": { "type": "object" },
+    "podLabels": { "type": "object" },
+    "podSecurityContext": { "type": "object" },
+    "securityContext": { "type": "object" },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "targetPort": { "type": ["integer", "string"] }
+      }
+    },
+    "resources": { "type": "object" },
+    "nodeSelector": { "type": "object" },
+    "tolerations": { "type": "array" },
+    "affinity": { "type": "object" },
+    "topologySpreadConstraints": { "type": "array" },
+    "netbird": {
+      "type": "object",
+      "required": ["managementUrl", "apiKeySecret"],
+      "properties": {
+        "managementUrl": { "type": "string", "pattern": "^https?://" },
+        "compatRange": { "type": "string" },
+        "apiKeySecret": {
+          "type": "object",
+          "required": ["name", "key"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "key": { "type": "string", "minLength": 1 },
+            "create": { "type": "boolean" },
+            "value": { "type": "string" },
+            "mountAsFile": { "type": "boolean" },
+            "mountPath": { "type": "string", "pattern": "^/" }
+          }
+        }
+      }
+    },
+    "logLevel": {
+      "type": "string",
+      "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    },
+    "rateLimit": {
+      "type": "object",
+      "properties": {
+        "maxRetries": { "type": "integer", "minimum": 0 },
+        "baseDelay": { "type": "string" },
+        "maxDelay": { "type": "string" }
+      }
+    },
+    "probes": { "type": "object" },
+    "compositeControllers": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "resyncPeriodSeconds": { "type": "integer", "minimum": 1 },
+        "timeout": { "type": "string" }
+      }
+    },
+    "roleBinding": {
+      "type": "object",
+      "required": ["resyncPeriodSeconds"],
+      "properties": {
+        "resyncPeriodSeconds": { "type": "integer", "minimum": 15, "maximum": 3600 }
+      }
+    },
+    "identitySync": {
+      "type": "object",
+      "required": ["resyncPeriodSeconds"],
+      "properties": {
+        "resyncPeriodSeconds": { "type": "integer", "minimum": 15, "maximum": 3600 }
+      }
+    },
+    "extraEnv": { "type": "array" },
+    "extraVolumes": { "type": "array" },
+    "extraVolumeMounts": { "type": "array" }
+  }
+}

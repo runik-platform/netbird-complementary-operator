@@ -1,0 +1,90 @@
+apiVersion: v2
+name: netbird-complementary-operator
+description: Metacontroller-based operator that manages NetBird resources not covered by the official NetBird Kubernetes operator.
+type: application
+version: 1.4.1
+appVersion: "1.4.1"
+kubeVersion: ">=1.26.0-0"
+keywords:
+  - netbird
+  - vpn
+  - metacontroller
+  - operator
+home: https://github.com/runik-platform/netbird-complementary-operator
+sources:
+  - https://github.com/runik-platform/netbird-complementary-operator
+maintainers:
+  - name: runik-platform
+annotations:
+  category: Infrastructure
+  licenses: AGPL-3.0-only
+  # Declare that this chart installs CRDs in the `crds/` directory.
+  artifacthub.io/crds: |
+    - kind: NetBirdInstance
+      version: v1alpha1
+      name: netbirdinstances.netbird.io
+      description: Declarative self-hosted NetBird runtime and sealed account bootstrap
+    - kind: NetBirdAccountSettings
+      version: v1alpha1
+      name: netbirdaccountsettings.netbird.io
+      description: Account-level NetBird settings (singleton)
+    - kind: NetBirdDNSSettings
+      version: v1alpha1
+      name: netbirddnssettings.netbird.io
+      description: NetBird DNS settings (singleton)
+    - kind: NetBirdNameserverGroup
+      version: v1alpha1
+      name: netbirdnameservergroups.netbird.io
+      description: NetBird DNS nameserver group
+    - kind: NetBirdRoute
+      version: v1alpha1
+      name: netbirdroutes.netbird.io
+      description: NetBird network route
+    - kind: NetBirdRoleBinding
+      version: v1alpha1
+      name: netbirdrolebindings.netbird.io
+      description: Maps existing external group membership to the NetBird admin role
+    - kind: NetBirdPostureCheck
+      version: v1alpha1
+      name: netbirdposturechecks.netbird.io
+      description: NetBird posture check (version, OS, geo, network range, process)
+    - kind: NetBirdToken
+      version: v1alpha1
+      name: netbirdtokens.netbird.io
+      description: NetBird Personal Access Token (emits a K8s Secret child)
+    - kind: NetBirdPeer
+      version: v1alpha1
+      name: netbirdpeers.netbird.io
+      description: Settings of an already-registered NetBird peer
+    - kind: NetBirdDNSZone
+      version: v1alpha1
+      name: netbirddnszones.netbird.io
+      description: NetBird authoritative DNS zone
+    - kind: NetBirdDNSRecord
+      version: v1alpha1
+      name: netbirddnsrecords.netbird.io
+      description: A/AAAA/CNAME record inside a NetBirdDNSZone
+    - kind: NetBirdPolicy
+      version: v1alpha1
+      name: netbirdpolicies.netbird.io
+      description: Full NetBird access policy with rules, ICMP, port ranges and posture checks
+    - kind: NetBirdNetwork
+      version: v1alpha1
+      name: netbirdnetworks.netbird.io
+      description: Standalone NetBird Network container
+    - kind: NetBirdNetworkResource
+      version: v1alpha1
+      name: netbirdnetworkresources.netbird.io
+      description: Arbitrary external resource inside a NetBird Network
+    - kind: NetBirdNetworkRouter
+      version: v1alpha1
+      name: netbirdnetworkrouters.netbird.io
+      description: Existing peer or peer group acting as a metadata-only Network router
+    - kind: NetBirdPeerGroupBinding
+      version: v1alpha1
+      name: netbirdpeergroupbindings.netbird.io
+      description: Declarative ownership of one peer-to-group membership
+    - kind: NetBirdPeerEnrollment
+      version: v1alpha1
+      name: netbirdpeerenrollments.netbird.io
+      description: Local one-time peer enrollment or stable-ID remote peer adoption

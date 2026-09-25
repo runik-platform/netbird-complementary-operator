@@ -1,0 +1,170 @@
+name: publish-netbird-complementary-operator
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: netbird-complementary-operator-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/runik-platform/netbird-complementary-operator
+  CHART_REGISTRY: oci://ghcr.io/runik-platform/charts
+  CHART_REFERENCE: oci://ghcr.io/runik-platform/charts/netbird-complementary-operator
+
+jobs:
+  publish:
+    name: Publish image, chart, and release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out tagged snapshot
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate release contract
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          if [[ ! "${version}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Unsupported release tag: ${RELEASE_TAG}" >&2
+            exit 1
+          fi
+          chart_version="$(sed -n 's/^version:[[:space:]]*//p' chart/Chart.yaml | head -n1 | tr -d '"')"
+          app_version="$(sed -n 's/^appVersion:[[:space:]]*//p' chart/Chart.yaml | head -n1 | tr -d '"')"
+          if [[ "${version}" != "${chart_version}" ]]; then
+            echo "Tag ${version} does not match chart version ${chart_version}" >&2
+            exit 1
+          fi
+          if [[ "${version}" != "${app_version}" ]]; then
+            echo "Tag ${version} does not match appVersion ${app_version}" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check existing image
+        id: image
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          if docker buildx imagetools inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Build and publish image
+        if: steps.image.outputs.exists != 'true'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
+        with:
+          context: .
+          file: Containerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.release.outputs.version }}
+          build-args: |
+            VERSION=${{ steps.release.outputs.version }}
+            VCS_REF=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Scan published image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ steps.release.outputs.version }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL
+
+      - name: Install Helm
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/helm-v3.20.2-linux-amd64.tar.gz"
+          curl --fail --location --silent --show-error \
+            --output "${archive}" \
+            https://get.helm.sh/helm-v3.20.2-linux-amd64.tar.gz
+          echo "258e830a9e613c8a7a302d6059b4bb3b9758f2f3e1bb8ea0d707ce10a9a72fea  ${archive}" | \
+            sha256sum --check --strict
+          tar -xzf "${archive}" -C "${RUNNER_TEMP}"
+          mkdir -p "${RUNNER_TEMP}/bin"
+          mv "${RUNNER_TEMP}/linux-amd64/helm" "${RUNNER_TEMP}/bin/helm"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+
+      - name: Package and publish chart
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          package_dir="$(mktemp -d)"
+          helm package chart --version "${VERSION}" --app-version "${VERSION}" \
+            --destination "${package_dir}" >/dev/null
+          package_file="${package_dir}/netbird-complementary-operator-${VERSION}.tgz"
+          test -f "${package_file}"
+          if tar -tzf "${package_file}" | grep -Eq '(^|/)[.]git(modules)?(/|$)'; then
+            echo "Packaged chart contains Git metadata" >&2
+            exit 1
+          fi
+
+          printf '%s' "${GHCR_TOKEN}" | helm registry login ghcr.io \
+            --username "${GITHUB_ACTOR}" --password-stdin
+          existing_dir="$(mktemp -d)"
+          if helm pull "${CHART_REFERENCE}" --version "${VERSION}" \
+            --destination "${existing_dir}" >/dev/null 2>&1; then
+            package_tree="$(mktemp -d)"
+            existing_tree="$(mktemp -d)"
+            tar -xzf "${package_file}" -C "${package_tree}"
+            tar -xzf "${existing_dir}/netbird-complementary-operator-${VERSION}.tgz" -C "${existing_tree}"
+            diff -qr "${package_tree}/netbird-complementary-operator" \
+              "${existing_tree}/netbird-complementary-operator" >/dev/null || {
+                echo "Immutable chart collision: ${CHART_REFERENCE} ${VERSION}" >&2
+                exit 1
+              }
+          else
+            helm push "${package_file}" "${CHART_REGISTRY}"
+          fi
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "GitHub release already exists: ${RELEASE_TAG}"
+            exit 0
+          fi
+          release_args=()
+          if [[ "${RELEASE_TAG#v}" == *-* ]]; then
+            release_args+=(--prerelease)
+          fi
+          gh release create "${RELEASE_TAG}" --verify-tag \
+            --title "${RELEASE_TAG}" --generate-notes "${release_args[@]}"

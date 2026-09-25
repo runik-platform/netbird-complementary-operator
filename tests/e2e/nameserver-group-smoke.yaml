@@ -1,0 +1,23 @@
+# Smoke test for NetBirdNameserverGroup.
+# Disabled + bogus domain so NetBird does not route any peer through it.
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdNameserverGroup
+metadata:
+  name: cop-smoke-test
+  namespace: netbird
+  labels:
+    test.netbird.io/owner: netbird-complementary-operator
+spec:
+  name: "cop-smoke-test"
+  description: "netbird-complementary-operator smoke test (safe to delete)"
+  nameservers:
+    - ip: "1.1.1.1"
+      nsType: "udp"
+      port: 53
+  groupRefs:
+    - "All"
+  primary: false
+  domains:
+    - "cop-smoke.invalid"
+  enabled: false
+  searchDomainsEnabled: false

@@ -1,0 +1,14 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPostureCheck
+metadata:
+  name: minimum-nb-version
+  namespace: netbird
+spec:
+  name: "Minimum NB Version"
+  description: "Require NetBird client >= 0.68.0"
+  checks:
+    nbVersionCheck:
+      minVersion: "0.68.0"
+    osVersionCheck:
+      linux:
+        minKernelVersion: "5.15"

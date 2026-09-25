@@ -1,0 +1,150 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: netbirdidentitysyncs.netbird.io
+spec:
+  group: netbird.io
+  scope: Namespaced
+  names:
+    kind: NetBirdIdentitySync
+    listKind: NetBirdIdentitySyncList
+    plural: netbirdidentitysyncs
+    singular: netbirdidentitysync
+    shortNames: [nbis]
+    categories: [netbird]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Ready
+          type: string
+          jsonPath: .status.conditions[?(@.type=="Ready")].status
+        - name: Users
+          type: integer
+          jsonPath: .status.usersObserved
+        - name: Groups
+          type: integer
+          jsonPath: .status.groupsObserved
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [source, provider, realmRoles]
+              properties:
+                source:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  pattern: '^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$'
+                  description: Stable ownership key for this complete identity source.
+                  x-kubernetes-validations:
+                    - rule: self == oldSelf
+                      message: source is immutable
+                instanceId:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  default: default
+                  x-kubernetes-validations:
+                    - rule: self == oldSelf
+                      message: instanceId is immutable
+                provider:
+                  type: object
+                  required: [baseUrl, realm, clientId, credentialsSecretRef]
+                  properties:
+                    baseUrl:
+                      type: string
+                      pattern: '^https?://\S+$'
+                    realm: { type: string, minLength: 1 }
+                    clientId: { type: string, minLength: 1 }
+                    credentialsSecretRef:
+                      type: object
+                      required: [name, key]
+                      properties:
+                        name: { type: string, minLength: 1 }
+                        key: { type: string, minLength: 1 }
+                realmRoles:
+                  type: array
+                  minItems: 1
+                  items: { type: string, minLength: 1 }
+                  description: Keycloak realm roles materialized as NetBird groups. Duplicate names are rejected by the reconciler.
+                adoptExistingUsers:
+                  type: boolean
+                  default: false
+                adoptExistingJWTGroups:
+                  type: boolean
+                  default: false
+                pollIntervalSeconds:
+                  type: integer
+                  minimum: 15
+                  maximum: 3600
+                  default: 60
+                deletionPolicy:
+                  type: string
+                  enum: [Retain, Disable]
+                  default: Retain
+            status:
+              type: object
+              properties:
+                observedGeneration: { type: integer, format: int64 }
+                synced: { type: boolean }
+                lastSyncTime: { type: string, format: date-time }
+                source: { type: string }
+                usersObserved: { type: integer, minimum: 0 }
+                groupsObserved: { type: integer, minimum: 0 }
+                membershipsApplied: { type: integer, minimum: 0 }
+                lastCompleteSnapshot: { type: string }
+                lastSuccessfulSync: { type: string, format: date-time }
+                users:
+                  type: array
+                  x-kubernetes-list-type: map
+                  x-kubernetes-list-map-keys: [external_id]
+                  items:
+                    type: object
+                    required: [external_id, internal_id, action]
+                    properties:
+                      external_id: { type: string }
+                      internal_id: { type: string }
+                      action: { type: string }
+                groups:
+                  type: array
+                  x-kubernetes-list-type: map
+                  x-kubernetes-list-map-keys: [external_id]
+                  items:
+                    type: object
+                    required: [external_id, internal_id, action]
+                    properties:
+                      external_id: { type: string }
+                      internal_id: { type: string }
+                      action: { type: string }
+                conflicts:
+                  type: array
+                  items: { type: string }
+                retainedGroups:
+                  type: array
+                  items: { type: string }
+                disabledUsers:
+                  type: array
+                  items: { type: string }
+                conditions:
+                  type: array
+                  x-kubernetes-list-type: map
+                  x-kubernetes-list-map-keys: [type]
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: { type: string }
+                      status: { type: string, enum: ["True", "False", Unknown] }
+                      reason: { type: string }
+                      message: { type: string }
+                      lastTransitionTime: { type: string, format: date-time }

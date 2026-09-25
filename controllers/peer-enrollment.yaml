@@ -1,0 +1,29 @@
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-peer-enrollment
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdpeerenrollments
+  childResources:
+    - apiVersion: v1
+      resource: secrets
+      updateStrategy:
+        method: InPlace
+  resyncPeriodSeconds: 10
+  hooks:
+    customize:
+      version: v2
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/customize/peer-enrollment
+        timeout: 30s
+    sync:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/sync/peer-enrollment
+        timeout: 30s
+    finalize:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/finalize/peer-enrollment
+        timeout: 30s

@@ -1,0 +1,32 @@
+apiVersion: metacontroller.k8s.io/v1alpha1
+kind: CompositeController
+metadata:
+  name: netbird-instance
+spec:
+  generateSelector: true
+  parentResource:
+    apiVersion: netbird.io/v1alpha1
+    resource: netbirdinstances
+  childResources:
+    - apiVersion: apps/v1
+      resource: deployments
+      updateStrategy: { method: InPlace }
+    - apiVersion: v1
+      resource: services
+      updateStrategy: { method: InPlace }
+    - apiVersion: v1
+      resource: configmaps
+      updateStrategy: { method: InPlace }
+    - apiVersion: v1
+      resource: secrets
+      updateStrategy: { method: InPlace }
+  resyncPeriodSeconds: 300
+  hooks:
+    sync:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/sync/instance
+        timeout: 30s
+    finalize:
+      webhook:
+        url: http://netbird-complementary-operator.netbird.svc.cluster.local/finalize/instance
+        timeout: 30s

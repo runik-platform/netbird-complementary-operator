@@ -1,0 +1,7 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetBirdPeerGroupBinding
+metadata:
+  name: example-router-routing-peers
+spec:
+  peerRef: example-router-01
+  groupRef: routing-peers
